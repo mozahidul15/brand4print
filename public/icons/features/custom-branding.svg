@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="80px" height="80px" viewBox="0 0 80 80" version="1.1" xmlns="http://www.w3.org/2000/svg">
+    <title>Custom Branding Icon</title>
+    <g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <rect fill="#F2F7FF" x="0" y="0" width="80" height="80" rx="40"/>
+        <rect fill="#E6F7FE" x="20" y="26" width="40" height="30" rx="4"/>
+        <rect fill="#FFFFFF" x="26" y="32" width="28" height="18" rx="2"/>
+        <circle cx="30" cy="41" r="2" fill="#7000fe"/>
+        <rect fill="#7000fe" x="34" y="38" width="16" height="2" rx="1"/>
+        <rect fill="#53C1DE" x="34" y="42" width="10" height="2" rx="1"/>
+        <path d="M20,56 L60,56 L60,60 C60,62.209139 58.209139,64 56,64 L24,64 C21.790861,64 20,62.209139 20,60 L20,56 Z" fill="#7000fe"/>
+    </g>
+</svg>

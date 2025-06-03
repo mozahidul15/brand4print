@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="80px" height="80px" viewBox="0 0 80 80" version="1.1" xmlns="http://www.w3.org/2000/svg">
+    <title>Reliable Quality Icon</title>
+    <g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <rect fill="#F2F7FF" x="0" y="0" width="80" height="80" rx="40"/>
+        <circle cx="40" cy="40" r="20" fill="#FFF4E6"/>
+        <path d="M40,20 L43.5,33.5 L57,33.5 L46,42 L50,56 L40,48 L30,56 L34,42 L23,33.5 L36.5,33.5 L40,20 Z" fill="#7000fe"/>
+        <circle cx="40" cy="40" r="8" fill="#FF9E2C"/>
+        <path d="M35,40 L38,43 L45,36" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+</svg>

@@ -1,0 +1,1762 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+"use client";
+
+import React, { useRef, useEffect, useState, useCallback } from 'react';
+import { Button } from '@/components/ui/button';
+import {
+  Type,
+  Square,
+  Circle,
+  Image as ImageIcon,
+  Trash2,
+  Download,
+  Copy,
+  FlipHorizontal,
+  FlipVertical,
+  ZoomIn,
+  ZoomOut,
+  Undo,
+  Redo,
+  Save,
+  Settings,
+  Star,
+  Triangle,
+  Minus,
+  Lock,
+  Eye,
+  EyeOff,
+  MousePointer,
+  Layers,
+  Move
+} from 'lucide-react';
+
+interface DesignData {
+  canvasData: object;
+  previewImage: string;
+  complexity: 'simple' | 'complex';
+  colorCount: number;
+  needsVectorization: boolean;
+  estimatedFees: {
+    vectorization: number;
+    complexity: number;
+  };
+}
+
+interface product {
+  id: string;
+  title: string;
+  productType: string;
+  mockupImages: {
+    front: string;
+    back: string
+  },
+}
+
+interface FabricEditorProps {
+  product: product;
+  uploadedFile?: File;
+  onDesignReady: (designData: DesignData) => void;
+  onClose: () => void;
+}
+
+interface HistoryState {
+  state: string;
+  timestamp: number;
+}
+
+// Enhanced Fabric.js Editor Component with Rich Features
+const FabricEditor: React.FC<FabricEditorProps> = ({ product, uploadedFile, onDesignReady, onClose }) => {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [canvas, setCanvas] = useState<any>(null);
+  const [fabricClasses, setFabricClasses] = useState<any>(null);
+  const [selectedColor, setSelectedColor] = useState('#000000');
+  const [strokeColor, setStrokeColor] = useState('#000000');
+  const [strokeWidth, setStrokeWidth] = useState(2);
+  const [fontSize, setFontSize] = useState(20);
+  const [fontFamily, setFontFamily] = useState('Arial');
+  const [activeObject, setActiveObject] = useState<any>(null);
+  const [canvasMode, setCanvasMode] = useState<'select' | 'drawing' | 'text'>('select');
+  const [history, setHistory] = useState<HistoryState[]>([]);
+  const [historyIndex, setHistoryIndex] = useState(-1);
+  const [zoom, setZoom] = useState(1);
+  const [layers, setLayers] = useState<any[]>([]);
+  // Add state for current mockup view
+  const [currentView, setCurrentView] = useState<'front' | 'back'>('front');
+  // State to track background visibility
+  const [showBackground, setShowBackground] = useState(true);
+  // Effect to handle canvasMode changes
+  useEffect(() => {
+    if (!canvas) return;
+
+    if (canvasMode === 'drawing') {
+      canvas.isDrawingMode = true;
+      canvas.selection = false;
+
+      // Disable text editing for all text objects when in drawing mode
+      canvas.getObjects().forEach((obj: any) => {
+        if (obj.type === 'text') {
+          obj.set('editable', false);
+        }
+      });
+    } else if (canvasMode === 'text') {
+      canvas.isDrawingMode = false;
+      canvas.selection = true;
+
+      // Ensure active text object is editable
+      const currentActiveObject = canvas.getActiveObject();
+      if (currentActiveObject && currentActiveObject.type === 'text') {
+        currentActiveObject.set('editable', true);
+        currentActiveObject.enterEditing();
+        canvas.setActiveObject(currentActiveObject);
+      }
+
+      // If clicking on text objects in text mode, make them editable
+      canvas.on('mouse:down', (e: any) => {
+        if (e.target && e.target.type === 'text' && canvasMode === 'text') {
+          e.target.set('editable', true);
+          canvas.setActiveObject(e.target);
+        }
+      });
+    } else {
+      // Select mode
+      canvas.isDrawingMode = false;
+      canvas.selection = true;
+
+      // Make text objects non-editable by default in select mode
+      canvas.getObjects().forEach((obj: any) => {
+        if (obj.type === 'text') {
+          obj.set('editable', false);
+        }
+      });
+    }
+
+    canvas.renderAll();
+  }, [canvasMode, canvas]);
+  // Color palette for design
+  const colorPalette = [
+    '#000000', '#FFFFFF', '#FF0000', '#00FF00', '#0000FF',
+    '#FFFF00', '#FF00FF', '#00FFFF', '#FFA500', '#800080',
+    '#FF69B4', '#32CD32', '#FFD700', '#FF4500', '#8A2BE2'
+  ];
+
+  // Font families
+  const fontFamilies = [
+    'Arial', 'Helvetica', 'Times New Roman', 'Courier New',
+    'Verdana', 'Georgia', 'Comic Sans MS', 'Impact', 'Trebuchet MS'
+  ];  // Helper function to ensure user content stays on top of backgrounds
+  const ensureUserContentOnTop = useCallback(() => {
+    if (!canvas) return;
+
+    // First, bring backgrounds to the back
+    const backgroundObjects = canvas.getObjects().filter((obj: any) =>
+      obj.data && obj.data.type === 'background'
+    );
+
+    console.log(`Moving ${backgroundObjects.length} background objects to back`);
+
+    // Send all background objects to the back
+    backgroundObjects.forEach((obj: any) => {
+      canvas.sendObjectToBack(obj);
+    });
+
+    // Then bring user content to the front
+    const userObjects = canvas.getObjects().filter((obj: any) =>
+      obj.data && obj.data.type === 'userContent'
+    );
+
+    console.log(`Bringing ${userObjects.length} user objects forward`);    // Sort user objects to maintain their relative ordering
+    const sortedUserObjects = [...userObjects].sort((a: any, b: any) => {
+      // Use indexOf to get the current position of objects in the canvas
+      const allObjects = canvas.getObjects();
+      return allObjects.indexOf(a) - allObjects.indexOf(b);
+    });
+
+    // Bring each user object forward to ensure proper stacking
+    sortedUserObjects.forEach((obj: any, index: number) => {
+      // Calculate target index - we want user objects at the top of the stack
+      const allObjects = canvas.getObjects();
+      const targetIndex = allObjects.length - sortedUserObjects.length + index;
+
+      // Move object to its target position
+      canvas.moveTo(obj, targetIndex);
+    });
+
+    canvas.renderAll();
+    console.log('Layer ordering completed');
+  }, [canvas]);
+
+  // Save canvas state to history
+  const saveToHistory = useCallback(() => {
+    if (!canvas) return;
+
+    const state = JSON.stringify(canvas.toJSON());
+    setHistory(prev => {
+      const newHistory = prev.slice(0, historyIndex + 1);
+      newHistory.push({
+        state,
+        timestamp: Date.now()
+      });
+
+      // Limit history to 50 states
+      if (newHistory.length > 50) {
+        newHistory.shift();
+      }
+
+      return newHistory;
+    });
+    setHistoryIndex(prev => prev + 1);
+  }, [canvas, historyIndex]);
+  const updateLayers = useCallback(() => {
+    if (canvas) {
+      setLayers([...canvas.getObjects()]);
+    }
+  }, [canvas]);
+  // Helper function to try loading an image from the public folder
+  const tryLoadingFromPublicFolder = useCallback((imageUrl: string, isBackground: boolean = true) => {
+    if (!canvas || !fabricClasses?.Image) return false;
+
+    try {
+      // Extract the filename from the URL
+      const urlParts = imageUrl.split('/');
+      let filename = urlParts[urlParts.length - 1];
+
+      // Clean the filename - remove query parameters if any
+      if (filename.includes('?')) {
+        filename = filename.split('?')[0];
+      }
+
+      // Check for different image extensions
+      const baseFilename = filename.includes('.')
+        ? filename.substring(0, filename.lastIndexOf('.'))
+        : filename;
+
+      // Try different extensions
+      const extensions = ['.jpg', '.jpeg', '.png', '.webp', '.gif'];
+
+      // Generate paths to try - FIXED: Remove /public/ prefix for Next.js
+      let possiblePaths: string[] = [];
+
+      // Add paths with original filename first (correct Next.js public path)
+      possiblePaths = [
+        `/mockups/${filename}`,
+      ];
+
+      // Then add paths with different extensions
+      extensions.forEach(ext => {
+        possiblePaths.push(
+          `/mockups/${baseFilename}${ext}`,
+        );
+      });
+
+      // Also try some common fallback images that exist in the mockups folder
+      possiblePaths.push(
+        '/mockups/front.jpg',
+        '/mockups/back.png',
+        '/mockups/white-paper-bags.jpg'
+      );
+
+      console.log('Trying to load image from public folder. Filename:', filename);
+      console.log('Possible paths:', possiblePaths);      const publicImg = new Image();
+      publicImg.crossOrigin = 'anonymous';
+      publicImg.src = possiblePaths[0]; // Try the first path
+
+      let pathIndex = 0;
+
+      const tryNextPath = () => {
+        pathIndex++;
+        if (pathIndex < possiblePaths.length) {
+          console.log('Trying next possible path:', possiblePaths[pathIndex]);
+          publicImg.src = possiblePaths[pathIndex];
+        } else {
+          console.error('Failed to load image from all possible public paths');
+          return false;
+        }
+      };
+
+      publicImg.onload = () => {
+        console.log('Successfully loaded image from public folder:', publicImg.src);
+        const fabricImage = new fabricClasses.Image(publicImg);
+
+        // Calculate proper scaling to fit the canvas
+        const canvasWidth = canvas.getWidth();
+        const canvasHeight = canvas.getHeight();
+
+        const scale = Math.min(
+          canvasWidth / publicImg.width,
+          canvasHeight / publicImg.height
+        );
+
+        fabricImage.set({
+          left: 0,
+          top: 0,
+          scaleX: scale,
+          scaleY: scale,          selectable: !isBackground,
+          evented: !isBackground,
+          lockMovementX: isBackground,
+          lockMovementY: isBackground,
+          visible: isBackground ? showBackground : true,
+          data: { type: isBackground ? 'background' : 'image' }
+        });
+
+        canvas.add(fabricImage);
+
+        if (isBackground) {
+          canvas.sendObjectToBack(fabricImage);
+        }
+
+        canvas.renderAll();
+        saveToHistory();
+        return true;
+      };
+
+      publicImg.onerror = () => {
+        tryNextPath();
+      };
+
+      return true;
+    } catch (error) {
+      console.error('Error trying to load from public folder:', error);
+      return false;
+    }
+  }, [canvas, fabricClasses, saveToHistory, showBackground]);
+
+  // Function to load mockup image to canvas
+  const loadMockupImage = useCallback((imageUrl: string, isBackground: boolean = true) => {
+    if (!canvas || !fabricClasses?.Image) return;
+
+    console.log('Loading mockup image:', imageUrl);
+
+    // Validate image URL
+    if (!imageUrl || typeof imageUrl !== 'string') {
+      console.error('Invalid image URL:', imageUrl);
+      return;
+    }
+
+    // First, remove any existing background images if this is a background
+    if (isBackground) {
+      const objectsToRemove = canvas.getObjects().filter((obj: any) =>
+        obj.data && obj.data.type === 'background'
+      );
+
+      console.log(`Removing ${objectsToRemove.length} existing background objects`);
+      objectsToRemove.forEach((obj: any) => {
+        canvas.remove(obj);
+      });
+    }
+
+    // Create a new image element
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.src = imageUrl;
+
+    // Add a timeout to check if image loading is taking too long
+    const timeout = setTimeout(() => {
+      console.warn('Image loading timeout for:', imageUrl);
+    }, 5000);
+
+    img.onload = () => {
+      clearTimeout(timeout);
+      console.log('Image loaded successfully:', imageUrl, img.width, 'x', img.height);
+      try {
+        // Create a fabric image from the loaded img
+        const fabricImage = new fabricClasses.Image(img);
+
+        // Calculate proper scaling to fit the canvas
+        const canvasWidth = canvas.getWidth();
+        const canvasHeight = canvas.getHeight();
+
+        const scale = Math.min(
+          canvasWidth / img.width,
+          canvasHeight / img.height
+        );
+
+        console.log('Scale:', scale, 'Canvas size:', canvasWidth, 'x', canvasHeight);
+
+        // Set image properties
+        fabricImage.set({
+          left: 0,
+          top: 0,
+          scaleX: scale,
+          scaleY: scale,
+          selectable: !isBackground,
+          evented: !isBackground,
+          lockMovementX: isBackground,
+          lockMovementY: isBackground,
+          visible: isBackground ? showBackground : true,
+          // Store metadata to identify this as a background
+          data: { type: isBackground ? 'background' : 'image' }
+        });        // Add the image to canvas
+        canvas.add(fabricImage);
+
+        // If it's a background, send it to the back
+        if (isBackground) {
+          canvas.sendObjectToBack(fabricImage);
+        }
+
+        canvas.renderAll();
+        console.log('Image added to canvas');
+
+        // Save state to history
+        saveToHistory();
+      } catch (error) {
+        console.error('Error creating fabric image:', error);
+      }
+    };    img.onerror = (err) => {
+      clearTimeout(timeout);
+      console.error('Error loading image:', imageUrl, err);
+      
+      // First try loading from public folder
+      console.log('Trying to load from public folder...');
+      const loadedFromPublic = tryLoadingFromPublicFolder(imageUrl, isBackground);
+      
+      // Add a small delay before trying proxy methods
+      setTimeout(() => {
+        if (!loadedFromPublic && !imageUrl.includes('data:')) {
+          console.log('Loading from public folder failed, attempting proxy API...');
+
+          // Try with our internal proxy API
+          try {
+            const fallbackImg = new Image();
+            fallbackImg.crossOrigin = 'anonymous';
+            fallbackImg.src = `/api/proxy-image?url=${encodeURIComponent(imageUrl)}`;
+            
+            fallbackImg.onload = () => {
+              console.log('Fallback image load successful with proxy API');
+              const fabricImage = new fabricClasses.Image(fallbackImg);
+
+              // Calculate proper scaling to fit the canvas
+              const canvasWidth = canvas.getWidth();
+              const canvasHeight = canvas.getHeight();
+
+              const scale = Math.min(
+                canvasWidth / fallbackImg.width,
+                canvasHeight / fallbackImg.height
+              );
+
+              fabricImage.set({
+                left: 0,
+                top: 0,
+                scaleX: scale,
+                scaleY: scale,
+                selectable: !isBackground,
+                evented: !isBackground,
+                lockMovementX: isBackground,
+                lockMovementY: isBackground,
+                visible: isBackground ? showBackground : true,
+                data: { type: isBackground ? 'background' : 'image' }
+              });              canvas.add(fabricImage);
+
+              if (isBackground) {
+                canvas.sendObjectToBack(fabricImage);
+              }
+
+              canvas.renderAll();
+              saveToHistory();
+            };
+            
+            fallbackImg.onerror = () => {
+              console.error('Proxy API failed, trying external CORS proxy...');
+
+              // If our proxy fails, try with external CORS proxy as backup
+              const secondFallbackImg = new Image();
+              secondFallbackImg.crossOrigin = 'anonymous';
+              secondFallbackImg.src = `https://corsproxy.io/?${encodeURIComponent(imageUrl)}`;
+              
+              secondFallbackImg.onload = () => {
+                console.log('External CORS proxy load successful');
+                const fabricImage = new fabricClasses.Image(secondFallbackImg);
+
+                // Calculate proper scaling to fit the canvas
+                const canvasWidth = canvas.getWidth();
+                const canvasHeight = canvas.getHeight();
+
+                const scale = Math.min(
+                  canvasWidth / secondFallbackImg.width,
+                  canvasHeight / secondFallbackImg.height
+                );
+
+                fabricImage.set({
+                  left: 0,
+                  top: 0,
+                  scaleX: scale,
+                  scaleY: scale,
+                  selectable: !isBackground,
+                  evented: !isBackground,
+                  lockMovementX: isBackground,
+                  lockMovementY: isBackground,
+                  visible: isBackground ? showBackground : true,
+                  data: { type: isBackground ? 'background' : 'image' }
+                });                canvas.add(fabricImage);
+
+                if (isBackground) {
+                  canvas.sendObjectToBack(fabricImage);
+                }
+
+                canvas.renderAll();
+                saveToHistory();
+              };
+
+              secondFallbackImg.onerror = () => {
+                console.error('All fallback methods failed. Unable to load image:', imageUrl);
+                
+                // Try to load a default placeholder image from public folder
+                try {
+                  const placeholderImg = new Image();
+                  placeholderImg.crossOrigin = 'anonymous';
+                  // Try the placeholder image in public folder (now using SVG which is more reliable)
+                  placeholderImg.src = '/placeholder-image.svg';
+                  
+                  placeholderImg.onerror = () => {
+                    console.error('Could not load placeholder image, using data URI');
+                    // If local placeholder fails, use a data URI as absolute last resort
+                    const svgPlaceholder = `
+                      <svg xmlns="http://www.w3.org/2000/svg" width="500" height="500">
+                        <rect width="100%" height="100%" fill="#f0f0f0"/>
+                        <text x="50%" y="50%" font-family="Arial" font-size="24" text-anchor="middle" fill="#888888">Image not available</text>
+                      </svg>
+                    `;
+                    const dataURI = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgPlaceholder.trim())}`;
+                    placeholderImg.src = dataURI;
+                  };
+
+                  placeholderImg.onload = () => {
+                    console.log('Loaded placeholder image');
+                    const fabricImage = new fabricClasses.Image(placeholderImg);
+
+                    const canvasWidth = canvas.getWidth();
+                    const canvasHeight = canvas.getHeight();
+
+                    const scale = Math.min(
+                      canvasWidth / placeholderImg.width,
+                      canvasHeight / placeholderImg.height
+                    );
+
+                    fabricImage.set({
+                      left: 0,
+                      top: 0,
+                      scaleX: scale,
+                      scaleY: scale,
+                      selectable: !isBackground,
+                      evented: !isBackground,
+                      lockMovementX: isBackground,
+                      lockMovementY: isBackground,
+                      visible: isBackground ? showBackground : true,
+                      data: { type: isBackground ? 'background' : 'image' }
+                    });
+
+                    canvas.add(fabricImage);                    if (isBackground) {
+                      canvas.sendObjectToBack(fabricImage);
+                    }
+
+                    canvas.renderAll();
+                    saveToHistory();
+                  };
+
+                  placeholderImg.onerror = () => {
+                    // Show a placeholder or error message on the canvas
+                    const errorText = new fabricClasses.Text('Image Failed to Load', {
+                      left: canvas.getWidth() / 2,
+                      top: canvas.getHeight() / 2,
+                      originX: 'center',
+                      originY: 'center',
+                      fontSize: 16,
+                      fill: 'red'
+                    });
+
+                    canvas.add(errorText);
+                    canvas.renderAll();
+                  };
+                } catch (error) {
+                  console.error('Error loading placeholder:', error);
+
+                  // Show a placeholder or error message on the canvas
+                  const errorText = new fabricClasses.Text('Image Failed to Load', {
+                    left: canvas.getWidth() / 2,
+                    top: canvas.getHeight() / 2,
+                    originX: 'center',
+                    originY: 'center',
+                    fontSize: 16,
+                    fill: 'red'
+                  });
+                  
+                  canvas.add(errorText);
+                  canvas.renderAll();
+                }
+              };
+            };
+          } catch (error) {
+            console.error('Error in fallback loading:', error);
+            
+            // Show a placeholder or error message on the canvas
+            const errorText = new fabricClasses.Text('Image Failed to Load', {
+              left: canvas.getWidth() / 2,
+              top: canvas.getHeight() / 2,
+              originX: 'center',
+              originY: 'center',
+              fontSize: 16,
+              fill: 'red'
+            });
+            
+            canvas.add(errorText);
+            canvas.renderAll();
+          }
+        }
+      }, 100); // Add delay for tryLoadingFromPublicFolder
+    };
+  }, [canvas, fabricClasses, saveToHistory, showBackground, tryLoadingFromPublicFolder]);
+
+  useEffect(() => {
+    if (canvas && fabricClasses && product?.mockupImages) {
+      console.log('Loading mockup image on canvas ready:', currentView, 'view');
+      console.log('Available mockup images:', product.mockupImages);
+
+      // First, store the current user content objects to restore them after loading the background
+      const userObjects = canvas.getObjects().filter((obj: any) =>
+        obj.data && obj.data.type === 'userContent'
+      );
+
+      console.log(`Preserving ${userObjects.length} user objects during mockup loading`);
+
+      // Add front image as background if we're in front view
+      if (currentView === 'front' && product.mockupImages.front) {
+        console.log('Loading front mockup image:', product.mockupImages.front);
+        loadMockupImage(product.mockupImages.front, true);
+      } else if (currentView === 'back' && product.mockupImages.back) {
+        console.log('Loading back mockup image:', product.mockupImages.back);
+        loadMockupImage(product.mockupImages.back, true);
+      } else {
+        console.warn(`No mockup image available for ${currentView} view`);
+      }
+
+      // Use a single delayed call to ensure ordering is correct
+      const timeoutId = setTimeout(() => {
+        ensureUserContentOnTop();
+        console.log('Layer ordering enforced after background load');
+      }, 500);
+
+      // Cleanup timeout on unmount or dependency change
+      return () => clearTimeout(timeoutId);
+    }
+  }, [canvas, fabricClasses, product, loadMockupImage, currentView, ensureUserContentOnTop]);
+
+  // Initialize Fabric.js Canvas
+  useEffect(() => {
+    let fabricCanvas: any = null;
+
+    const initializeFabricCanvas = async () => {
+      try {
+        if (!canvasRef.current) {
+          setIsLoading(false);
+          return;
+        }        // Import fabric.js version 6
+        const fabricModule = await import('fabric').then(m => m?.default || m);
+
+        if (!fabricModule?.Canvas) {
+          console.error('Fabric.js failed to load');
+          setIsLoading(false);
+          return;
+        }
+
+        // In Fabric.js v6, we need to access the Canvas, Image, etc. from the module
+        const fabricClasses = {
+          Canvas: fabricModule.Canvas,
+          Image: fabricModule.Image,
+          Text: fabricModule.Text,
+          Rect: fabricModule.Rect,
+          Circle: fabricModule.Circle,
+          Triangle: fabricModule.Triangle,
+          Line: fabricModule.Line,
+          Path: fabricModule.Path
+        };
+        setFabricClasses(fabricClasses);
+
+        // Create a new canvas
+        fabricCanvas = new fabricClasses.Canvas(canvasRef.current, {
+          width: 500,
+          height: 500,
+          backgroundColor: '#ffffff',
+          selection: canvasMode === 'select', // Initial selection mode
+          // controlsAboveOverlay: true, // Consider if needed
+          preserveObjectStacking: true // Important for layers
+        });
+
+        // Set up canvas events
+        fabricCanvas.on('selection:created', (e: any) => {
+          setActiveObject(e.selected[0]);
+          setLayers([...fabricCanvas.getObjects()]);
+        });
+
+        fabricCanvas.on('selection:updated', (e: any) => {
+          setActiveObject(e.selected[0]);
+          setLayers([...fabricCanvas.getObjects()]);
+        });
+
+        fabricCanvas.on('selection:cleared', () => {
+          setActiveObject(null);
+        });
+
+        // Initial mode setup
+        if (canvasMode === 'drawing') {
+          fabricCanvas.isDrawingMode = true;
+          fabricCanvas.selection = false;
+        } else if (canvasMode === 'text') {
+          fabricCanvas.isDrawingMode = false;
+          fabricCanvas.selection = true;
+        } else {
+          fabricCanvas.isDrawingMode = false;
+          fabricCanvas.selection = true;
+        }
+
+        fabricCanvas.on('object:modified', () => {
+          setTimeout(() => {
+            setLayers([...fabricCanvas.getObjects()]);
+          }, 10);
+        });
+
+        fabricCanvas.on('object:added', () => {
+          setLayers([...fabricCanvas.getObjects()]);
+        });
+
+        fabricCanvas.on('object:removed', () => {
+          setLayers([...fabricCanvas.getObjects()]);
+        });
+
+        setCanvas(fabricCanvas);
+
+        // If an uploaded file was provided, add it to the canvas
+        if (uploadedFile) {
+          const imageUrl = URL.createObjectURL(uploadedFile);
+
+          // Convert the image URL to a format that Fabric.js can use
+          const img = new Image();
+          img.crossOrigin = 'anonymous';
+          img.src = imageUrl;
+          img.onload = () => {
+            const fabricImage = new fabricClasses.Image(img);
+            fabricImage.scaleToWidth(200);
+            fabricImage.set({
+              left: 150,
+              top: 150,
+              selectable: true
+            });
+            fabricCanvas.add(fabricImage);
+            fabricCanvas.centerObject(fabricImage);
+            fabricCanvas.renderAll();
+
+            // Save to history
+            setTimeout(() => {
+              const state = JSON.stringify(fabricCanvas.toJSON());
+              setHistory([{ state, timestamp: Date.now() }]);
+              setHistoryIndex(0);
+            }, 100);
+          };
+        }        // Initial history save
+        setTimeout(() => {
+          const state = JSON.stringify(fabricCanvas.toJSON());
+          setHistory([{ state, timestamp: Date.now() }]);
+          setHistoryIndex(0);
+
+          // After canvas is initialized and history is saved, set isLoading to false
+          setIsLoading(false);
+        }, 100);
+      } catch (error) {
+        console.error('Error initializing fabric.js:', error);
+        setIsLoading(false);
+      }
+    }; initializeFabricCanvas();
+
+    return () => {
+      if (fabricCanvas) {
+        // Safer cleanup than using dispose
+        try {
+          // Remove all event listeners
+          fabricCanvas.off();
+          // Clear all objects
+          fabricCanvas.clear();
+          // Remove canvas from DOM
+          fabricCanvas.requestRenderAll();
+          fabricCanvas = null;
+        } catch (error) {
+          console.error('Error cleaning up canvas:', error);
+        }
+      }
+    };
+  }, [uploadedFile, canvasMode]);
+  // Text operations
+  const addText = useCallback(() => {
+    if (!canvas || !fabricClasses || !fabricClasses.Text) return;
+
+    console.log('Adding text to canvas');
+
+    const text = new fabricClasses.Text('Edit this text', {
+      left: 100,
+      top: 100,
+      fontFamily: fontFamily,
+      fontSize: fontSize,
+      fill: selectedColor,
+      stroke: strokeColor,
+      strokeWidth: strokeWidth,
+      selectable: true,
+      editable: true,
+      // Ensure text is on top of any background
+      data: { type: 'userContent' }
+    });
+
+    canvas.add(text);
+    canvas.setActiveObject(text);
+    canvas.bringForward(text); // Use bringForward instead of bringToFront
+    canvas.renderAll();
+    saveToHistory();
+  }, [canvas, fabricClasses, fontFamily, fontSize, selectedColor, strokeColor, strokeWidth, saveToHistory]);
+  // Shape operations
+  const addRectangle = useCallback(() => {
+    if (!canvas?.getContext() || !fabricClasses || !fabricClasses.Rect) return;
+
+    console.log('Adding rectangle to canvas');
+
+    const rect = new fabricClasses.Rect({
+      left: 100,
+      top: 100,
+      width: 100,
+      height: 100,
+      fill: selectedColor,
+      stroke: strokeColor,
+      strokeWidth: strokeWidth,
+      selectable: true,
+      data: { type: 'userContent' }
+    });
+
+    canvas.add(rect);
+    canvas.setActiveObject(rect);
+    canvas.bringForward(rect); // Ensure shape is visible on top of background
+    canvas.renderAll();
+    saveToHistory();
+  }, [canvas, fabricClasses, selectedColor, strokeColor, strokeWidth, saveToHistory]);
+
+  const addCircle = useCallback(() => {
+    if (!canvas || !fabricClasses || !fabricClasses.Circle) return;
+
+    console.log('Adding circle to canvas');
+
+    const circle = new fabricClasses.Circle({
+      left: 100,
+      top: 100,
+      radius: 50,
+      fill: selectedColor,
+      stroke: strokeColor,
+      strokeWidth: strokeWidth,
+      selectable: true,
+      data: { type: 'userContent' }
+    });
+
+    canvas.add(circle);
+    canvas.setActiveObject(circle);
+    canvas.bringForward(circle); // Ensure shape is visible on top of background
+    canvas.renderAll();
+    saveToHistory();
+  }, [canvas, fabricClasses, selectedColor, strokeColor, strokeWidth, saveToHistory]);
+
+  const addTriangle = useCallback(() => {
+    if (!canvas || !fabricClasses || !fabricClasses.Triangle) return;
+
+    console.log('Adding triangle to canvas');
+
+    const triangle = new fabricClasses.Triangle({
+      left: 100,
+      top: 100,
+      width: 100,
+      height: 100,
+      fill: selectedColor,
+      stroke: strokeColor,
+      strokeWidth: strokeWidth,
+      selectable: true,
+      data: { type: 'userContent' }
+    });
+
+    canvas.add(triangle);
+    canvas.setActiveObject(triangle);
+    canvas.bringForward(triangle); // Ensure shape is visible on top of background
+    canvas.renderAll();
+    saveToHistory();
+  }, [canvas, fabricClasses, selectedColor, strokeColor, strokeWidth, saveToHistory]); const addLine = useCallback(() => {
+    if (!canvas || !fabricClasses || !fabricClasses.Line) return;
+
+    console.log('Adding line to canvas');
+
+    const line = new fabricClasses.Line([50, 100, 150, 100], {
+      stroke: strokeColor,
+      strokeWidth: strokeWidth,
+      selectable: true,
+      data: { type: 'userContent' }
+    });
+
+    canvas.add(line);
+    canvas.setActiveObject(line);
+    canvas.bringForward(line); // Use bringForward instead of bringToFront
+    canvas.renderAll();
+    saveToHistory();
+  }, [canvas, fabricClasses, strokeColor, strokeWidth, saveToHistory]);
+
+  const addStar = useCallback(() => {
+    if (!canvas || !fabricClasses || !fabricClasses.Path) return;
+
+    console.log('Adding star to canvas');
+
+    // Create a star path
+    const starPath = 'M 50 0 L 60 35 L 100 35 L 70 57 L 80 92 L 50 70 L 20 92 L 30 57 L 0 35 L 40 35 Z';
+
+    const star = new fabricClasses.Path(starPath, {
+      left: 100,
+      top: 100,
+      fill: selectedColor,
+      stroke: strokeColor,
+      strokeWidth: strokeWidth,
+      scaleX: 0.5,
+      scaleY: 0.5,
+      selectable: true,
+      data: { type: 'userContent' }
+    });
+
+    canvas.add(star);
+    canvas.setActiveObject(star);
+    canvas.bringForward(star); // Use bringForward instead of bringToFront
+    canvas.renderAll();
+    saveToHistory();
+  }, [canvas, fabricClasses, selectedColor, strokeColor, strokeWidth, saveToHistory]);
+  const handleImageUpload = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file && canvas && fabricClasses && fabricClasses.Image) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const imageUrl = e.target?.result as string;
+
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.src = imageUrl;
+
+        img.onload = () => {
+          const fabricImage = new fabricClasses.Image(img);
+          fabricImage.scaleToWidth(200);
+          fabricImage.set({
+            left: 100,
+            top: 100,
+            selectable: true,
+            data: { type: 'userContent' } // Mark as user content, not background
+          });
+          canvas.add(fabricImage);
+          canvas.setActiveObject(fabricImage);
+          canvas.bringForward(fabricImage); // Ensure uploaded image is on top
+          canvas.renderAll();
+          saveToHistory();
+        };
+      };
+      reader.readAsDataURL(file);
+    }
+  }, [canvas, fabricClasses, saveToHistory]);
+  // Object manipulation
+  const duplicateObject = useCallback(() => {
+    if (!canvas || !activeObject) return;
+
+    activeObject.clone((cloned: any) => {
+      cloned.set({
+        left: (cloned.left || 0) + 20,
+        top: (cloned.top || 0) + 20,
+        data: { type: 'userContent' } // Mark as user content
+      });
+      canvas.add(cloned);
+      canvas.setActiveObject(cloned);
+      canvas.bringForward(cloned); // Ensure duplicated object is on top
+      canvas.renderAll();
+      saveToHistory();
+    });
+  }, [canvas, activeObject, saveToHistory]);
+
+  const deleteObject = useCallback(() => {
+    if (!canvas || !activeObject) return;
+
+    canvas.remove(activeObject);
+    canvas.renderAll();
+    setActiveObject(null);
+    saveToHistory();
+  }, [canvas, activeObject, saveToHistory]);
+
+  const lockObject = useCallback(() => {
+    if (!activeObject) return;
+
+    activeObject.set({
+      selectable: false,
+      evented: false
+    });
+    canvas?.renderAll();
+    setActiveObject(null);
+  }, [canvas, activeObject]);  const bringObjectForward = useCallback(() => {
+    if (!canvas || !activeObject) return;
+
+    // Get all objects on canvas
+    const allObjects = canvas.getObjects();
+    // Calculate the highest z-index currently used (which is the length - 1)
+    const maxZIndex = allObjects.length - 1;
+
+    // Move active object to highest z-index
+    canvas.moveTo(activeObject, maxZIndex);
+    canvas.renderAll();
+    saveToHistory();
+    console.log('Brought object to front with z-index:', maxZIndex);
+  }, [canvas, activeObject, saveToHistory]);
+  const sendToBack = useCallback(() => {
+    if (!canvas || !activeObject) return;
+
+    canvas.sendObjectToBack(activeObject);
+    canvas.renderAll();
+    saveToHistory();
+  }, [canvas, activeObject, saveToHistory]);
+
+  const flipHorizontal = useCallback(() => {
+    if (!activeObject) return;
+
+    activeObject.set('flipX', !activeObject.flipX);
+    canvas?.renderAll();
+    saveToHistory();
+  }, [canvas, activeObject, saveToHistory]);
+
+  const flipVertical = useCallback(() => {
+    if (!activeObject) return;
+
+    activeObject.set('flipY', !activeObject.flipY);
+    canvas?.renderAll();
+    saveToHistory();
+  }, [canvas, activeObject, saveToHistory]);
+
+  // Canvas operations
+  const clearCanvas = useCallback(() => {
+    if (canvas) {
+      canvas.clear();
+      canvas.setBackgroundColor('#ffffff', canvas.renderAll.bind(canvas));
+      setActiveObject(null);
+      saveToHistory();
+    }
+  }, [canvas, saveToHistory]);
+
+  const zoomIn = useCallback(() => {
+    if (!canvas) return;
+    const newZoom = Math.min(zoom * 1.1, 3);
+    setZoom(newZoom);
+    canvas.setZoom(newZoom);
+    canvas.renderAll();
+  }, [canvas, zoom]);
+
+  const zoomOut = useCallback(() => {
+    if (!canvas) return;
+    const newZoom = Math.max(zoom * 0.9, 0.1);
+    setZoom(newZoom);
+    canvas.setZoom(newZoom);
+    canvas.renderAll();
+  }, [canvas, zoom]);
+  const resetZoom = useCallback(() => {
+    if (!canvas) return;
+
+    // Reset zoom to 100%
+    setZoom(1);
+    canvas.setZoom(1);
+
+    // Reset viewport to center
+    if (canvas.width && canvas.height) {
+      canvas.viewportTransform = [1, 0, 0, 1, 0, 0];
+    }
+
+    canvas.renderAll();
+    console.log('Zoom reset to 100%');
+  }, [canvas]);
+  // History operations
+  const undo = useCallback(() => {
+    if (historyIndex > 0 && canvas) {
+      try {
+        const newIndex = historyIndex - 1;
+        const state = history[newIndex];
+
+        if (state) {
+          canvas.loadFromJSON(JSON.parse(state.state), () => {
+            // After loading, ensure proper object selection and rendering
+            canvas.renderAll();
+            setHistoryIndex(newIndex);
+
+            // Make sure active object is properly set
+            const activeObj = canvas.getActiveObject();
+            if (activeObj) {
+              // Ensure properties are properly set
+              setActiveObject(activeObj);
+
+              // If it's a text object, ensure it's editable in text mode
+              if (activeObj.type === 'text' && canvasMode === 'text') {
+                activeObj.set('editable', true);
+              }
+            } else {
+              setActiveObject(null);
+            }
+
+            // Update layers panel
+            updateLayers();
+
+            // Re-apply layer ordering
+            setTimeout(() => {
+              ensureUserContentOnTop();
+            }, 50);
+          });
+        }
+      } catch (error) {
+        console.error('Error undoing:', error);
+      }
+    }
+  }, [canvas, historyIndex, history, updateLayers, canvasMode, ensureUserContentOnTop]);
+  const redo = useCallback(() => {
+    if (historyIndex < history.length - 1 && canvas) {
+      try {
+        const newIndex = historyIndex + 1;
+        const state = history[newIndex];
+
+        if (state) {
+          canvas.loadFromJSON(JSON.parse(state.state), () => {
+            // After loading, ensure proper object selection and rendering
+            canvas.renderAll();
+            setHistoryIndex(newIndex);
+
+            // Make sure active object is properly set
+            const activeObj = canvas.getActiveObject();
+            if (activeObj) {
+              // Ensure properties are properly set
+              setActiveObject(activeObj);
+
+              // If it's a text object, ensure it's editable in text mode
+              if (activeObj.type === 'text' && canvasMode === 'text') {
+                activeObj.set('editable', true);
+              }
+            } else {
+              setActiveObject(null);
+            }
+
+            // Update layers panel
+            updateLayers();
+
+            // Re-apply layer ordering
+            setTimeout(() => {
+              ensureUserContentOnTop();
+            }, 50);
+          });
+        }
+      } catch (error) {
+        console.error('Error redoing:', error);
+      }
+    }
+  }, [canvas, historyIndex, history, updateLayers, canvasMode, ensureUserContentOnTop]);
+
+  // Update object properties
+  const updateActiveObjectProperty = useCallback((property: string, value: any) => {
+    if (!activeObject) return;
+
+    activeObject.set(property, value);
+    canvas?.renderAll();
+    saveToHistory();
+  }, [canvas, activeObject, saveToHistory]);
+
+  // Export operations
+  const downloadDesign = useCallback(() => {
+    if (!canvas) return;
+
+    const link = document.createElement('a');
+    link.download = 'design.png';
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+  }, [canvas]);
+
+  const downloadJSON = useCallback(() => {
+    if (!canvas) return;
+
+    const dataStr = JSON.stringify(canvas.toJSON(), null, 2);
+    const dataBlob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(dataBlob);
+
+    const link = document.createElement('a');
+    link.download = 'design.json';
+    link.href = url;
+    link.click();
+  }, [canvas]);
+
+  // Enhanced design complexity analysis
+  const analyzeDesignComplexity = useCallback(() => {
+    if (!canvas) return {
+      complexity: 'simple' as const,
+      colorCount: 1,
+      needsVectorization: true,
+      estimatedFees: { vectorization: 30, complexity: 0 }
+    };
+
+    const objects = canvas.getObjects();
+    const hasImages = objects.some((obj: any) => obj.type === 'image');
+    const hasComplexShapes = objects.some((obj: any) => ['path', 'group'].includes(obj.type || ''));
+    const hasText = objects.some((obj: any) => obj.type === 'text');
+    const hasDrawing = objects.some((obj: any) => obj.type === 'path' && obj.path);
+
+    // Count unique colors more accurately
+    const colors = new Set<string>();
+    const gradients = new Set<string>();
+
+    objects.forEach((obj: any) => {
+      // Handle fill colors
+      if (obj.fill) {
+        if (typeof obj.fill === 'string') {
+          colors.add(obj.fill);
+        } else if (obj.fill.type) {
+          // It's a gradient
+          gradients.add('gradient');
+          if (obj.fill.colorStops) {
+            obj.fill.colorStops.forEach((stop: any) => colors.add(stop.color));
+          }
+        }
+      }
+
+      // Handle stroke colors
+      if (obj.stroke && typeof obj.stroke === 'string') {
+        colors.add(obj.stroke);
+      }
+
+      // Handle text colors
+      if (obj.type === 'text' && obj.fill && typeof obj.fill === 'string') {
+        colors.add(obj.fill);
+      }
+    });
+
+    const colorCount = Math.max(colors.size, 1);
+    const hasGradients = gradients.size > 0;
+
+    // Enhanced complexity calculation
+    const complexityScore = [
+      objects.length > 5,
+      colorCount > 3,
+      hasImages,
+      hasComplexShapes,
+      hasGradients,
+      hasDrawing,
+      hasText && objects.filter((obj: any) => obj.type === 'text').length > 2
+    ].filter(Boolean).length;
+
+    const complexity = complexityScore >= 2 ? 'complex' as const : 'simple' as const;
+
+    // Calculate estimated fees
+    const needsVectorization = true; // Canvas designs always need vectorization
+    const vectorizationFee = complexity === 'complex' ? 50 : 30;
+    const complexityFee = colorCount > 3 || hasGradients ? 25 : 0;
+
+    return {
+      complexity,
+      colorCount,
+      needsVectorization,
+      estimatedFees: {
+        vectorization: vectorizationFee,
+        complexity: complexityFee
+      }
+    };
+  }, [canvas]);
+
+  const handleSaveDesign = useCallback(() => {
+    if (!canvas) return;
+
+    const analysis = analyzeDesignComplexity();
+
+    const designData: DesignData = {
+      canvasData: canvas.toJSON(),
+      previewImage: canvas.toDataURL('image/png'),
+      complexity: analysis.complexity,
+      colorCount: analysis.colorCount,
+      needsVectorization: analysis.needsVectorization,
+      estimatedFees: analysis.estimatedFees
+    };
+
+    onDesignReady(designData);
+  }, [canvas, analyzeDesignComplexity, onDesignReady]);  // Function to toggle between front and back view of the product
+  const toggleProductView = useCallback(() => {
+    if (!canvas || !product?.mockupImages) return;
+
+    console.log('Toggling product view from', currentView);
+
+    // Toggle the view
+    const newView = currentView === 'front' ? 'back' : 'front';
+    setCurrentView(newView);
+
+    // Check if the image for the new view exists
+    if (product.mockupImages[newView]) {
+      // Use the loadMockupImage function to load the new image
+      // This function already handles removing existing background images
+      loadMockupImage(product.mockupImages[newView], true);
+
+      // Make sure to call this after a slight delay to ensure the image is loaded
+      setTimeout(() => {
+        ensureUserContentOnTop();
+      }, 100);
+    } else {
+      console.warn(`No ${newView} mockup image available`);
+    }
+  }, [canvas, currentView, product, loadMockupImage, ensureUserContentOnTop]);  // Toggle background visibility
+  const toggleBackgroundVisibility = useCallback(() => {
+    if (!canvas) return;
+
+    console.log('Toggling background visibility from', showBackground);
+
+    // Toggle visibility state
+    const newVisibility = !showBackground;
+    setShowBackground(newVisibility);
+
+    // Find background objects
+    const backgroundObjects = canvas.getObjects().filter((obj: any) =>
+      obj.data && obj.data.type === 'background'
+    );
+
+    console.log(`Found ${backgroundObjects.length} background objects to toggle`);
+
+    // Toggle their visibility
+    backgroundObjects.forEach((obj: any) => {
+      obj.set('visible', newVisibility);
+    });
+
+    canvas.renderAll();
+
+    // Ensure proper layer order
+    ensureUserContentOnTop();
+  }, [canvas, showBackground, ensureUserContentOnTop]);
+  // Sort and enhance layers for better display
+  const getSortedLayers = useCallback(() => {
+    if (!canvas) return [];
+
+    // Get all canvas objects
+    const allObjects = canvas.getObjects();
+
+    // Create an enhanced array with additional metadata
+    const enhancedLayers = allObjects.map((obj: any, index: number) => {
+      const isBackground = obj.data?.type === 'background';
+      const isUserContent = obj.data?.type === 'userContent';
+      // Use the array index as z-index since getItemIndex doesn't exist in Fabric.js v6
+      const zIndex = index;
+
+      return {
+        object: obj,
+        isBackground,
+        isUserContent,
+        zIndex,
+        type: obj.type
+      };
+    });
+
+    // Sort by z-index, so top objects appear first
+    return [...enhancedLayers].sort((a, b) => b.zIndex - a.zIndex);
+  }, [canvas]);
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={(e) => e.stopPropagation()}>
+      <div className="bg-white rounded-lg w-full max-w-7xl h-[90vh] flex flex-col overflow-y-auto">
+        {/* Header */}
+        <div className="flex justify-between items-center p-4 border-b">
+          <h2 className="text-xl font-semibold">Advanced Design Editor</h2>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={downloadDesign}>
+              <Download className="h-4 w-4 mr-2" />
+              PNG
+            </Button>
+            <Button variant="outline" size="sm" onClick={downloadJSON}>
+              <Save className="h-4 w-4 mr-2" />
+              JSON
+            </Button>
+            <Button variant="outline" onClick={onClose}>×</Button>
+          </div>
+        </div>
+
+        {/* Main Content */}
+        <div className="flex-1 p-4 overflow-hidden">
+          {isLoading ? (
+            <div className="flex items-center justify-center h-full">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
+              <p className="ml-4">Loading advanced editor...</p>
+            </div>
+          ) : (
+            <div className="h-full flex gap-4">
+              {/* Tools Panel */}
+              <div className="w-64 border rounded-lg p-4 overflow-y-auto">
+                <h3 className="font-semibold mb-4">Tools</h3>
+
+                {/* Mode Selection */}
+                <div className="mb-4">
+                  <label className="block text-sm font-medium mb-2">Mode:</label>
+                  <div className="grid grid-cols-3 gap-1">
+                    <Button
+                      variant={canvasMode === 'select' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setCanvasMode('select')}
+                    >
+                      <MousePointer className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant={canvasMode === 'drawing' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setCanvasMode('drawing')}
+                    >
+                      <Settings className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant={canvasMode === 'text' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setCanvasMode('text')}
+                    >
+                      <Type className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Basic Shapes */}
+                <div className="space-y-2 mb-4">
+                  <h4 className="text-sm font-medium">Shapes</h4>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button variant="outline" size="sm" onClick={addText}>
+                      <Type className="h-4 w-4" />
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={addRectangle}>
+                      <Square className="h-4 w-4" />
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={addCircle}>
+                      <Circle className="h-4 w-4" />
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={addTriangle}>
+                      <Triangle className="h-4 w-4" />
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={addLine}>
+                      <Minus className="h-4 w-4" />
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={addStar}>
+                      <Star className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Image Upload */}
+                <div className="mb-4">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageUpload}
+                    className="hidden"
+                  />
+                  <Button
+                    variant="outline"
+                    className="w-full justify-start"
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    <ImageIcon className="h-4 w-4 mr-2" />
+                    Upload Image
+                  </Button>
+                </div>
+
+                {/* Colors */}
+                <div className="mb-4">
+                  <h4 className="text-sm font-medium mb-2">Colors</h4>
+                  <div className="grid grid-cols-5 gap-1 mb-2">
+                    {colorPalette.map((color) => (
+                      <button
+                        key={color}
+                        className={`w-6 h-6 rounded border-2 ${selectedColor === color ? 'border-gray-800' : 'border-gray-300'
+                          }`}
+                        style={{ backgroundColor: color }}
+                        onClick={() => setSelectedColor(color)}
+                      />
+                    ))}
+                  </div>
+                  <div className="flex gap-2">
+                    <input
+                      type="color"
+                      value={selectedColor}
+                      onChange={(e) => setSelectedColor(e.target.value)}
+                      className="w-full h-8 rounded border"
+                      title="Fill Color"
+                    />
+                    <input
+                      type="color"
+                      value={strokeColor}
+                      onChange={(e) => setStrokeColor(e.target.value)}
+                      className="w-full h-8 rounded border"
+                      title="Stroke Color"
+                    />
+                  </div>
+                </div>
+
+                {/* Text Properties */}
+                <div className="mb-4">
+                  <h4 className="text-sm font-medium mb-2">Text</h4>
+                  <div className="space-y-2">
+                    <select
+                      value={fontFamily}
+                      onChange={(e) => setFontFamily(e.target.value)}
+                      className="w-full p-1 border rounded text-sm"
+                    >
+                      {fontFamilies.map(font => (
+                        <option key={font} value={font}>{font}</option>
+                      ))}
+                    </select>
+                    <input
+                      type="range"
+                      min="8"
+                      max="72"
+                      value={fontSize}
+                      onChange={(e) => setFontSize(Number(e.target.value))}
+                      className="w-full"
+                    />
+                    <span className="text-xs text-gray-600">Size: {fontSize}px</span>
+                  </div>
+                </div>
+
+                {/* Stroke Width */}
+                <div className="mb-4">
+                  <h4 className="text-sm font-medium mb-2">Stroke</h4>
+                  <input
+                    type="range"
+                    min="0"
+                    max="20"
+                    value={strokeWidth}
+                    onChange={(e) => setStrokeWidth(Number(e.target.value))}
+                    className="w-full"
+                  />
+                  <span className="text-xs text-gray-600">Width: {strokeWidth}px</span>
+                </div>
+              </div>
+
+              {/* Canvas Area */}
+              <div className="flex-1 border rounded-lg flex flex-col">
+                {/* Canvas Toolbar */}
+                <div className="border-b p-2 flex justify-between items-center">
+                  <div className="flex gap-1">
+                    <Button variant="outline" size="sm" onClick={undo} disabled={historyIndex <= 0}>
+                      <Undo className="h-4 w-4" />
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={redo} disabled={historyIndex >= history.length - 1}>
+                      <Redo className="h-4 w-4" />
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={duplicateObject} disabled={!activeObject}>
+                      <Copy className="h-4 w-4" />
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={deleteObject} disabled={!activeObject}>
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+
+                  <div className="flex gap-1">
+                    <Button variant="outline" size="sm" onClick={flipHorizontal} disabled={!activeObject}>
+                      <FlipHorizontal className="h-4 w-4" />
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={flipVertical} disabled={!activeObject}>
+                      <FlipVertical className="h-4 w-4" />
+                    </Button>                    <Button variant="outline" size="sm" onClick={bringObjectForward} disabled={!activeObject} title="Bring forward">
+                      <Layers className="h-4 w-4" />
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={sendToBack} disabled={!activeObject}>
+                      <Move className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <div className="flex gap-1">
+                    <Button variant="outline" size="sm" onClick={zoomOut}>
+                      <ZoomOut className="h-4 w-4" />
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={resetZoom}>
+                      {Math.round(zoom * 100)}%
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={zoomIn}>
+                      <ZoomIn className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={toggleBackgroundVisibility}
+                      title={`${showBackground ? 'Hide' : 'Show'} background`}
+                    >
+                      {showBackground ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </Button>
+                    {product && product.mockupImages && product.mockupImages.front && product.mockupImages.back && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={toggleProductView}
+                        title={`Switch to ${currentView === 'front' ? 'back' : 'front'} view`}
+                      >
+                        {currentView === 'front' ? 'Back' : 'Front'}
+                      </Button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Canvas */}
+                <div className="flex-1 flex items-center justify-center bg-gray-50 p-4">
+                  <div className="border-2 border-gray-300 border-dashed p-4 bg-white rounded">
+                    <canvas
+                      ref={canvasRef}
+                      className="border shadow-lg"
+                      width={500}
+                      height={500}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Properties Panel */}
+              <div className="w-64 border rounded-lg p-4 overflow-y-auto">
+                <h3 className="font-semibold mb-4">Properties</h3>
+
+                {/* Object Properties */}
+                {activeObject && (
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium mb-1">Object Type:</label>
+                      <span className="text-sm bg-gray-100 px-2 py-1 rounded">{activeObject.type}</span>
+                    </div>
+
+                    {activeObject.type === 'text' && (
+                      <div>
+                        <label className="block text-sm font-medium mb-1">Text:</label>
+                        <input
+                          type="text"
+                          value={activeObject.text || ''}
+                          onChange={(e) => updateActiveObjectProperty('text', e.target.value)}
+                          className="w-full p-1 border rounded text-sm"
+                        />
+                      </div>
+                    )}                    <div>
+                      <label className="block text-sm font-medium mb-1">Fill Color:</label>
+                      <input
+                        type="color"
+                        value={typeof activeObject.fill === 'string' ? activeObject.fill : '#000000'}
+                        onChange={(e) => updateActiveObjectProperty('fill', e.target.value)}
+                        className="w-full h-8 rounded border"
+                      />
+                      {typeof activeObject.fill !== 'string' && (
+                        <p className="text-xs text-amber-500 mt-1">
+                          Complex fill (gradient/pattern) detected. Use the color picker to replace with a solid color.
+                        </p>
+                      )}
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium mb-1">Opacity:</label>
+                      <input
+                        type="range"
+                        min="0"
+                        max="1"
+                        step="0.1"
+                        value={activeObject.opacity || 1}
+                        onChange={(e) => updateActiveObjectProperty('opacity', Number(e.target.value))}
+                        className="w-full"
+                      />
+                      <span className="text-xs text-gray-600">{Math.round((activeObject.opacity || 1) * 100)}%</span>
+                    </div>
+
+                    <div className="flex gap-2">
+                      <Button variant="outline" size="sm" onClick={lockObject}>
+                        <Lock className="h-4 w-4" />
+                      </Button>
+                      <Button variant="outline" size="sm" onClick={deleteObject}>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                )}                {/* Layers */}
+                <div className="mt-6">
+                  <h4 className="text-sm font-medium mb-2">Layers ({layers.length})</h4>
+                  <div className="space-y-1 max-h-32 overflow-y-auto">
+                    {getSortedLayers().map((layer, index) => {
+                      const obj = layer.object;
+                      const layerClass =
+                        activeObject === obj ? 'bg-blue-100 border-blue-300' :
+                          layer.isBackground ? 'bg-gray-100' :
+                            layer.isUserContent ? 'bg-green-50' : 'bg-gray-50';
+
+                      return (
+                        <div
+                          key={index}
+                          className={`p-2 text-xs border rounded cursor-pointer flex justify-between items-center ${layerClass}`}
+                          onClick={() => {
+                            canvas?.setActiveObject(obj);
+                            canvas?.renderAll();
+                            setActiveObject(obj);
+                          }}
+                        >
+                          <span>
+                            {layer.type} {layer.zIndex + 1}
+                            {layer.isBackground && ' (bg)'}
+                            {layer.isUserContent && ' (user)'}
+                          </span>
+                          <div className="flex gap-1">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const newVisibility = !obj.visible;
+                                obj.set('visible', newVisibility);
+
+                                // If making an object visible, also ensure it's properly positioned in layer stack
+                                if (newVisibility && obj.data?.type === 'userContent') {
+                                  // Call once immediately and once after a small delay
+                                  ensureUserContentOnTop();
+                                  setTimeout(ensureUserContentOnTop, 50);
+                                }
+
+                                canvas?.renderAll();
+                                updateLayers(); // Update layer panel to reflect changes
+                              }}
+                            >
+                              {obj.visible !== false ? <Eye className="h-3 w-3" /> : <EyeOff className="h-3 w-3" />}
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Design Info */}
+                <div className="mt-6 bg-gray-50 rounded-lg p-3">
+                  <h4 className="font-medium mb-2">Design Info</h4>
+                  <div className="text-sm text-gray-600 space-y-1">
+                    <p>Objects: {layers.length}</p>
+                    <p>Colors: {analyzeDesignComplexity().colorCount}</p>
+                    <p>Complexity: {analyzeDesignComplexity().complexity}</p>
+                    <p>Zoom: {Math.round(zoom * 100)}%</p>
+                  </div>
+                </div>
+
+                {/* Canvas Actions */}
+                <div className="mt-4 space-y-2">
+                  <Button variant="outline" className="w-full" onClick={clearCanvas}>
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Clear All
+                  </Button>
+                  <Button variant="outline" className="w-full" onClick={toggleBackgroundVisibility}>
+                    {showBackground ? 'Hide' : 'Show'} Background
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="p-4 border-t flex justify-between">
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => canvas?.toDataURL && console.log('Preview')}>
+              Preview
+            </Button>
+            <Button onClick={handleSaveDesign} disabled={isLoading || !canvas}>
+              Save Design
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default FabricEditor;

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="60px" height="60px" viewBox="0 0 60 60" version="1.1" xmlns="http://www.w3.org/2000/svg">
+    <title>Free Custom Design Icon</title>
+    <g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <circle fill="#F2F7FF" cx="30" cy="30" r="30"/>
+        <rect fill="#FFFFFF" x="15" y="15" width="30" height="30" rx="2" stroke="#7000fe" stroke-width="1.5"/>
+        <circle cx="25" cy="25" r="5" fill="#7000fe"/>
+        <circle cx="35" cy="25" r="5" fill="#7000fe" opacity="0.6"/>
+        <circle cx="30" cy="25" r="5" fill="#7000fe" opacity="0.8"/>
+        <rect x="20" y="35" width="20" height="5" rx="1" fill="#7000fe" opacity="0.8"/>
+        <text x="29" y="24" font-family="Arial" font-size="10" font-weight="bold" fill="#FFFFFF" text-anchor="middle">FREE</text>
+    </g>
+</svg>

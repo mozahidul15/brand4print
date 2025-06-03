@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="60px" height="60px" viewBox="0 0 60 60" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <title>Banner Design Icon</title>
+    <g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <rect fill="#f0f0f0" x="0" y="0" width="60" height="60" rx="6"></rect>
+        <rect fill="#53C1DE" x="10" y="15" width="40" height="20" rx="1"></rect>
+        <polygon fill="#7000fe" points="15 25 30 15 40 25"></polygon>
+        <circle fill="#F9A03F" cx="40" cy="15" r="5"></circle>
+        <rect fill="#3F87F5" x="18" y="35" width="24" height="10" rx="2"></rect>
+    </g>
+</svg>

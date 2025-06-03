@@ -1,0 +1,93 @@
+// /* eslint-disable @typescript-eslint/no-explicit-any */
+// import { NextRequest, NextResponse } from 'next/server';
+// import { connectToDatabase } from '@/lib/services/mongodb';
+// import Customization from '@/lib/models/customization';
+// import crypto from 'crypto';
+
+// export async function POST(req: NextRequest) {
+//   try {
+//     const { artworkData } = await req.json();
+
+//     if (!artworkData) {
+//       return NextResponse.json(
+//         { error: 'Artwork data is required' },
+//         { status: 400 }
+//       );
+//     }
+
+//     await connectToDatabase();
+
+//     // Generate hash for the artwork
+//     const artworkString = JSON.stringify(artworkData);
+//     const artworkHash = crypto.createHash('sha256').update(artworkString).digest('hex');
+
+//     // Check if this design has been printed before
+//     const existingDesign = await Customization.findOne({
+//       designHash: artworkHash,
+//       status: { $in: ['ordered', 'printed'] }
+//     });
+
+//     const hasBeenPrinted = !!existingDesign;
+//     const printHistory: any[] = [];
+
+//     if (hasBeenPrinted && existingDesign) {
+//       printHistory.push(...(existingDesign.printHistory || []));
+//     }
+
+//     return NextResponse.json({
+//       hasBeenPrinted,
+//       designHash: artworkHash,
+//       printHistory,
+//       firstPrintedAt: existingDesign?.printHistory?.[0]?.printedAt,
+//       totalPrints: printHistory.reduce((sum, print) => sum + print.quantity, 0)
+//     });
+
+//   } catch (error) {
+//     console.error('Error checking design history:', error);
+//     return NextResponse.json(
+//       { error: 'Failed to check design history' },
+//       { status: 500 }
+//     );
+//   }
+// }
+
+// export async function GET(req: NextRequest) {
+//   try {
+//     const url = new URL(req.url);
+//     const userId = url.searchParams.get('userId');
+//     const sessionId = url.searchParams.get('sessionId');
+
+//     if (!userId && !sessionId) {
+//       return NextResponse.json(
+//         { error: 'User ID or Session ID required' },
+//         { status: 400 }
+//       );
+//     }
+
+//     await connectToDatabase();
+
+//     const query: any = {};
+//     if (userId) query.userId = userId;
+//     if (sessionId) query.sessionId = sessionId;
+
+//     const history = await Customization.find({
+//       ...query,
+//       status: { $in: ['ordered', 'printed'] }
+//     })
+//     .sort({ createdAt: -1 })
+//     .limit(100)
+//     .select('designHash productTitle artworkData.previewImageUrl printHistory createdAt');
+
+//     return NextResponse.json({
+//       history,
+//       count: history.length
+//     });
+
+//   } catch (error) {
+//     console.error('Error fetching design history:', error);
+//     return NextResponse.json(
+//       { error: 'Failed to fetch design history' },
+//       { status: 500 }
+//     );
+//   }
+// }

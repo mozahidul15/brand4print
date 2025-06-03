@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="80px" height="80px" viewBox="0 0 80 80" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <title>Design Services Icon</title>
+    <g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <circle stroke="#3F87F5" stroke-width="2" cx="40" cy="40" r="25"></circle>
+        <path d="M28,52 L52,28" stroke="#7000fe" stroke-width="2"></path>
+        <path d="M40,25 L55,40 L40,55 L25,40 L40,25 Z" stroke="#53C1DE" stroke-width="2"></path>
+        <circle fill="#7000fe" cx="40" cy="40" r="5"></circle>
+        <circle fill="#F9A03F" cx="25" cy="40" r="3"></circle>
+        <circle fill="#F9A03F" cx="40" cy="25" r="3"></circle>
+        <circle fill="#F9A03F" cx="55" cy="40" r="3"></circle>
+        <circle fill="#F9A03F" cx="40" cy="55" r="3"></circle>
+    </g>
+</svg>

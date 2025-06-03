@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="60px" height="60px" viewBox="0 0 60 60" version="1.1" xmlns="http://www.w3.org/2000/svg">
+    <title>Turnaround Time Icon</title>
+    <g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <circle fill="#F2F7FF" cx="30" cy="30" r="30"/>
+        <circle cx="30" cy="30" r="20" stroke="#7000fe" stroke-width="2"/>
+        <path d="M30,15 L30,30 L40,35" stroke="#7000fe" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M42,24 L46,28 L50,24" stroke="#7000fe" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M46,28 L46,20" stroke="#7000fe" stroke-width="1.5" stroke-linecap="round"/>
+        <path d="M10,24 L14,28 L18,24" stroke="#7000fe" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" transform="translate(14, 26) scale(-1, 1) translate(-14, -26)"/>
+        <path d="M14,28 L14,20" stroke="#7000fe" stroke-width="1.5" stroke-linecap="round" transform="translate(14, 24) scale(1, -1) translate(-14, -24)"/>
+    </g>
+</svg>

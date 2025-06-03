@@ -1,0 +1,73 @@
+// "use client";
+
+// import React from 'react';
+// import Link from 'next/link';
+// import { useAuth } from '@/components/auth';
+// import { Palette, ShoppingCart, Users, Box, RefreshCw } from 'lucide-react';
+
+// const AdminDashboard = () => {
+//   const { user } = useAuth();
+
+//   return (
+//     <div>
+//       <div className="mb-8">
+//         <h1 className="text-2xl font-bold mb-2">Welcome back, {user?.name}</h1>
+//         <p className="text-gray-600">Here&apos;s what&apos;s happening with your store today.</p>
+//       </div>
+
+//       {/* Quick stats */}
+//       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+//         <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
+//           <div className="flex items-center justify-between mb-4">
+//             <h3 className="font-medium text-gray-500">Products</h3>
+//             <ShoppingCart className="text-purple-500 h-6 w-6" />
+//           </div>
+//           <p className="text-3xl font-bold">12</p>
+//           <p className="text-sm text-gray-500 mt-2">Total products</p>
+//         </div>
+        
+//         <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
+//           <div className="flex items-center justify-between mb-4">
+//             <h3 className="font-medium text-gray-500">Users</h3>
+//             <Users className="text-blue-500 h-6 w-6" />
+//           </div>
+//           <p className="text-3xl font-bold">24</p>
+//           <p className="text-sm text-gray-500 mt-2">Registered users</p>
+//         </div>
+        
+//         <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
+//           <div className="flex items-center justify-between mb-4">
+//             <h3 className="font-medium text-gray-500">Orders</h3>
+//             <Box className="text-green-500 h-6 w-6" />
+//           </div>
+//           <p className="text-3xl font-bold">8</p>
+//           <p className="text-sm text-gray-500 mt-2">Pending orders</p>
+//         </div>
+        
+
+//       </div>
+
+//       {/* Quick actions */}
+//       <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100 mb-8">
+//         <h2 className="text-xl font-semibold mb-4">Quick Actions</h2>
+//         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+//           <Link href="/admin/products" className="flex items-center p-4 border rounded-md hover:bg-gray-50 transition-colors">
+//             <ShoppingCart className="h-5 w-5 mr-3 text-gray-600" />
+//             <span>Manage Products</span>
+//           </Link>
+          
+        
+          
+//           <button className="flex items-center p-4 border rounded-md hover:bg-gray-50 transition-colors">
+//             <RefreshCw className="h-5 w-5 mr-3 text-gray-600" />
+//             <span>Refresh Cache</span>
+//           </button>
+//         </div>
+//       </div>
+      
+   
+//     </div>
+//   );
+// };
+
+// export default AdminDashboard;

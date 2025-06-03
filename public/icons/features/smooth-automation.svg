@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="80px" height="80px" viewBox="0 0 80 80" version="1.1" xmlns="http://www.w3.org/2000/svg">
+    <title>Smooth Automation Icon</title>
+    <g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <rect fill="#F2F7FF" x="0" y="0" width="80" height="80" rx="40"/>
+        <circle cx="40" cy="40" r="24" fill="#FFECF0" opacity="0.7"/>
+        <path d="M40,20 A20,20 0 1,1 40,60 A20,20 0 1,1 40,20" stroke="#FF647C" stroke-width="2"/>
+        <path d="M40,28 L40,40 L50,45" stroke="#7000fe" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="40" cy="40" r="3" fill="#7000fe"/>
+        <path d="M58,30 C58,30 53,37 46,37 C39,37 39,30 32,30 C25,30 22,37 22,37" stroke="#FF647C" stroke-width="2" stroke-dasharray="2,2"/>
+    </g>
+</svg>

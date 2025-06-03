@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="80px" height="80px" viewBox="0 0 80 80" version="1.1" xmlns="http://www.w3.org/2000/svg">
+    <title>No Order Minimums Icon</title>
+    <g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <rect fill="#F2F7FF" x="0" y="0" width="80" height="80" rx="40"/>
+        <rect fill="#E6F7FE" x="23" y="25" width="34" height="30" rx="3"/>
+        <rect fill="#FFFFFF" x="25" y="27" width="30" height="26" rx="2"/>
+        <rect fill="#7000fe" x="30" y="32" width="20" height="4" rx="1"/>
+        <rect fill="#53C1DE" x="30" y="38" width="15" height="3" rx="1"/>
+        <rect fill="#7000fe" x="30" y="43" width="10" height="3" rx="1"/>
+        <circle cx="55" cy="55" r="10" fill="#7000fe"/>
+        <path d="M50,55 L60,55 M55,50 L55,60" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round"/>
+    </g>
+</svg>

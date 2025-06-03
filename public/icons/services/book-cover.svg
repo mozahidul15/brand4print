@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="80px" height="80px" viewBox="0 0 80 80" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <title>Book Cover Icon</title>
+    <g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <path d="M15,15 L15,65 L65,65 L65,15 L15,15 Z" stroke="#3F87F5" stroke-width="2" fill="#FFFFFF"></path>
+        <path d="M20,20 L20,60 L40,60 L40,20 L20,20 Z" stroke="#53C1DE" stroke-width="2" fill="#E6F7FE"></path>
+        <path d="M40,20 L40,60 L60,60 L60,20 L40,20 Z" stroke="#7000fe" stroke-width="2" fill="#F9E6FF"></path>
+        <path d="M40,20 L40,60" stroke="#3F87F5" stroke-width="2"></path>
+        <rect fill="#7000fe" x="45" y="30" width="10" height="2" rx="1"></rect>
+        <rect fill="#7000fe" x="45" y="35" width="10" height="2" rx="1"></rect>
+        <rect fill="#7000fe" x="45" y="40" width="10" height="2" rx="1"></rect>
+        <circle fill="#53C1DE" cx="30" cy="35" r="5"></circle>
+        <rect fill="#53C1DE" x="25" y="45" width="10" height="2" rx="1"></rect>
+        <rect fill="#53C1DE" x="25" y="50" width="10" height="2" rx="1"></rect>
+    </g>
+</svg>
