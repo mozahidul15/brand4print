@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export async function POST(request: Request) {
-  return NextResponse.json({ message: 'Validated successfully' });
+  const body = await request.json(); // Use the request
+  // Example: process the body if needed
+  return NextResponse.json({ message: 'Validated successfully', data: body });
 }
